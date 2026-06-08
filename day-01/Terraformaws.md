@@ -1,192 +1,218 @@
-# Setup Terraform for AWS
+# AWS EC2 Instance Creation using Terraform
 
-This guide explains how to configure AWS credentials and set up Terraform to work with AWS.
+## Overview
 
-## Prerequisites
+This Terraform configuration creates an AWS EC2 instance in the **us-east-1** region using a specified AMI, instance type, subnet, and SSH key pair.
 
-* AWS Account
-* Terraform installed on your system
-* AWS CLI installed on your system
-
----
-
-## Step 1: Install AWS CLI
-
-Install the AWS Command Line Interface (CLI) on your machine.
-
-### Verify Installation
-
-```bash
-aws --version
-```
-
-Expected output:
-
-```bash
-aws-cli/2.x.x Python/3.x.x
-```
-
----
-
-## Step 2: Create an IAM User
-
-To allow Terraform to interact with AWS services securely, create a dedicated IAM user.
-
-### Create IAM User
-
-1. Sign in to the AWS Management Console.
-2. Navigate to **IAM (Identity and Access Management)**.
-3. Click **Users** → **Create User**.
-4. Enter a username (e.g., `terraform-user`).
-5. Click **Next**.
-
-### Assign Permissions
-
-Attach the required policies based on your use case.
-
-For learning and testing purposes, you can attach:
-
-* `AmazonEC2FullAccess`
-
-For production environments, follow the principle of least privilege and grant only the permissions required.
-
-### Create Access Keys
-
-1. Open the newly created IAM user.
-2. Navigate to **Security Credentials**.
-3. Click **Create Access Key**.
-4. Select **Command Line Interface (CLI)**.
-5. Save the following credentials securely:
-
-```text
-Access Key ID
-Secret Access Key
-```
-
-> **Important:** The Secret Access Key is displayed only once.
-
----
-
-## Step 3: Configure AWS CLI
-
-Run the following command:
-
-```bash
-aws configure
-```
-
-Provide the requested information:
-
-```text
-AWS Access Key ID: <YOUR_ACCESS_KEY>
-AWS Secret Access Key: <YOUR_SECRET_KEY>
-Default region name: us-east-1
-Default output format: json
-```
-
-### Example
-
-```bash
-aws configure
-```
-
-```text
-AWS Access Key ID [None]: AKIAxxxxxxxxxxxx
-AWS Secret Access Key [None]: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-Default region name [None]: us-east-1
-Default output format [None]: json
-```
-
----
-
-## Step 4: Verify AWS Configuration
-
-Run:
-
-```bash
-aws sts get-caller-identity
-```
-
-Expected output:
-
-```json
-{
-  "UserId": "XXXXXXXXXXXX",
-  "Account": "123456789012",
-  "Arn": "arn:aws:iam::123456789012:user/terraform-user"
-}
-```
-
----
-
-## Step 5: Install Terraform
-
-### Verify Installation
-
-```bash
-terraform version
-```
-
-Expected output:
-
-```bash
-Terraform v1.x.x
-```
-
----
-
-## Step 6: Create a Terraform Configuration
-
-Create a file named `main.tf`.
+## Terraform Configuration
 
 ```hcl
 provider "aws" {
-  region = "us-east-1"
+    region = "us-east-1"
 }
 
 resource "aws_instance" "example" {
-  ami           = "ami-091138d0f0d41ff90"
-  instance_type = "t2.micro"
+    ami           = "ami-091138d0f0d41ff90"
+    instance_type = "t3.micro"
+    subnet_id     = "subnet-08474b95322035757"
+    key_name      = "terraform_bharath"
 }
 ```
 
 ---
 
-## Step 7: Initialize Terraform
+## Code Explanation
+
+### Provider Block
+
+```hcl
+provider "aws" {
+    region = "us-east-1"
+}
+```
+
+The provider block specifies the cloud provider that Terraform will interact with.
+
+| Parameter | Description                                               |
+| --------- | --------------------------------------------------------- |
+| aws       | Indicates that AWS is the cloud provider.                 |
+| region    | Specifies the AWS region where resources will be created. |
+
+In this example:
+
+```text
+us-east-1
+```
+
+represents the **US East (N. Virginia)** AWS region.
+
+---
+
+### EC2 Instance Resource
+
+```hcl
+resource "aws_instance" "example" {
+```
+
+Defines an EC2 instance resource.
+
+| Component    | Description                                   |
+| ------------ | --------------------------------------------- |
+| aws_instance | Terraform resource type for AWS EC2 instances |
+| example      | Logical name used within Terraform            |
+
+Terraform refers to this resource internally as:
+
+```text
+aws_instance.example
+```
+
+---
+
+### AMI (Amazon Machine Image)
+
+```hcl
+ami = "ami-091138d0f0d41ff90"
+```
+
+The AMI specifies the operating system and software configuration for the EC2 instance.
+
+Examples:
+
+* Amazon Linux 2
+* Amazon Linux 2023
+* Ubuntu
+* Red Hat Enterprise Linux
+* Windows Server
+
+To find available AMIs:
+
+```bash
+aws ec2 describe-images
+```
+
+or
+
+AWS Console → EC2 → AMIs
+
+---
+
+### Instance Type
+
+```hcl
+instance_type = "t3.micro"
+```
+
+Defines the hardware configuration of the EC2 instance.
+
+| Resource | Specification             |
+| -------- | ------------------------- |
+| vCPU     | 2                         |
+| Memory   | 1 GB                      |
+| Family   | Burstable General Purpose |
+
+Common instance types:
+
+| Type      | Usage                    |
+| --------- | ------------------------ |
+| t2.micro  | Free Tier eligible       |
+| t3.micro  | Small workloads          |
+| t3.small  | Development environments |
+| t3.medium | Medium applications      |
+
+---
+
+### Subnet ID
+
+```hcl
+subnet_id = "subnet-08474b95322035757"
+```
+
+Specifies the subnet in which the EC2 instance will be launched.
+
+A subnet belongs to a VPC (Virtual Private Cloud).
+
+Network Flow:
+
+```text
+AWS Account
+   │
+   └── VPC
+        │
+        └── Subnet
+              │
+              └── EC2 Instance
+```
+
+Benefits of using a subnet:
+
+* Network isolation
+* IP address allocation
+* Route table control
+* Security management
+
+---
+
+### Key Pair
+
+```hcl
+key_name = "terraform_bharath"
+```
+
+Associates an AWS Key Pair with the EC2 instance.
+
+Purpose:
+
+* Secure SSH access to Linux instances
+* Authentication without passwords
+
+Connect to the instance:
+
+```bash
+ssh -i terraform_bharath.pem ec2-user@<public-ip>
+```
+
+For Ubuntu:
+
+```bash
+ssh -i terraform_bharath.pem ubuntu@<public-ip>
+```
+
+---
+
+## Terraform Workflow
+
+### Initialize Terraform
 
 ```bash
 terraform init
 ```
 
-This command downloads the required AWS provider plugins.
+Downloads the AWS provider plugin.
 
 ---
 
-## Step 8: Validate Configuration
+### Validate Configuration
 
 ```bash
 terraform validate
 ```
 
-Expected output:
-
-```text
-Success! The configuration is valid.
-```
+Checks the syntax of Terraform files.
 
 ---
 
-## Step 9: Review Execution Plan
+### Review Execution Plan
 
 ```bash
 terraform plan
 ```
 
-Terraform displays the resources that will be created.
+Shows the resources Terraform intends to create.
 
 ---
 
-## Step 10: Apply Configuration
+### Create Resources
 
 ```bash
 terraform apply
@@ -198,57 +224,67 @@ Type:
 yes
 ```
 
-when prompted.
-
-Terraform will create the AWS resources defined in your configuration.
+to confirm deployment.
 
 ---
 
-## Step 11: Destroy Resources (Optional)
+### Verify Instance Creation
 
-To avoid AWS charges, remove resources when no longer needed.
+```bash
+aws ec2 describe-instances
+```
+
+or
+
+AWS Console → EC2 → Instances
+
+---
+
+### Destroy Resources
 
 ```bash
 terraform destroy
 ```
 
-Type:
+Removes all resources created by Terraform.
+
+---
+
+## Architecture
 
 ```text
-yes
+Terraform
+    │
+    ▼
+AWS Provider
+    │
+    ▼
+AWS EC2 Service
+    │
+    ▼
+VPC
+    │
+    ▼
+Subnet (subnet-08474b95322035757)
+    │
+    ▼
+EC2 Instance (t3.micro)
+    │
+    ▼
+SSH Access using Key Pair
+(terraform_bharath.pem)
 ```
 
-to confirm.
-
 ---
 
-## Useful Commands
+## Notes
 
-```bash
-terraform init
-terraform validate
-terraform fmt
-terraform plan
-terraform apply
-terraform destroy
-terraform state list
-```
+* Ensure AWS credentials are configured before running Terraform.
+* Verify that the subnet exists in the specified region.
+* Ensure the key pair `terraform_bharath` exists in AWS.
+* Security Groups should allow SSH (port 22) if remote access is required.
+* The selected AMI must be available in the `us-east-1` region.
 
----
+## Author
 
-## Best Practices
-
-* Never hardcode AWS credentials in Terraform files.
-* Use IAM roles whenever possible.
-* Store Terraform state remotely (e.g., S3 + DynamoDB).
-* Follow the principle of least privilege for IAM permissions.
-* Use version control (Git) for Terraform code.
-
----
-
-## References
-
-* Terraform Documentation: https://developer.hashicorp.com/terraform/docs
-* AWS CLI Documentation: https://docs.aws.amazon.com/cli/
-* AWS IAM Documentation: https://docs.aws.amazon.com/IAM/
-
+Terraform AWS EC2 Provisioning Example
